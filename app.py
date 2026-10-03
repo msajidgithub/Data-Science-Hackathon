@@ -106,6 +106,25 @@ header[data-testid="stHeader"] { background: transparent; }
 .result-pos { background: #006b3f; color: #fff; border-radius: 16px; padding: 1.1rem 1.2rem; }
 .result-neu { background: #78716c; color: #fff; border-radius: 16px; padding: 1.1rem 1.2rem; }
 .result-neg { background: #c2410c; color: #fff; border-radius: 16px; padding: 1.1rem 1.2rem; }
+
+.explain-grid { display: flex; gap: 14px; margin: 0 0 1.15rem 0; }
+.explain {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #dce7df;
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    box-shadow: 0 8px 20px rgba(20, 83, 45, 0.06);
+}
+.explain h4 { font-family: Outfit, sans-serif; color: #14532d; margin: 0 0 .4rem 0; font-size: 1.05rem; }
+.explain p { color: #3f5c4e; margin: 0; line-height: 1.45; font-size: 0.98rem; }
+.sent-result h3 { color: #fff !important; font-size: 1.55rem !important; margin: 0 0 .35rem 0; }
+.sent-result p { margin: 0; font-size: 1.05rem; line-height: 1.45; opacity: .96; }
+[data-testid="stTextArea"] textarea {
+    font-size: 1.05rem !important;
+    line-height: 1.5 !important;
+    min-height: 160px;
+}
 </style>
 """
 
@@ -308,26 +327,72 @@ elif page == "Churn Prediction":
         st.progress(min(max(proba, 0.0), 1.0), text=f"Churn risk {proba:.1%}")
 
 else:
-    hero("What is this review saying?", "Saved TF-IDF + Logistic Regression · labels from star ratings.")
+    hero(
+        "Review sentiment",
+        "Paste a customer review. The model reads the words and tells you if the buyer is happy, mixed, or unhappy — so the team does not have to open thousands of reviews one by one.",
+    )
+    st.markdown(
+        """
+<div class="explain-grid">
+  <div class="explain">
+    <h4>What it does</h4>
+    <p>It classifies review text as <b>Positive</b>, <b>Neutral</b>, or <b>Negative</b> using the saved TF-IDF + Logistic Regression model.</p>
+  </div>
+  <div class="explain">
+    <h4>Why it helps the business</h4>
+    <p>Support can jump to angry reviews first. Product can see quality complaints. Marketing can keep happy quotes. That saves time and protects ratings.</p>
+  </div>
+  <div class="explain">
+    <h4>How to use it</h4>
+    <p>Type or paste one review below and click <b>Read this review</b>. You get a label, confidence, and a suggested next action.</p>
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
     nlp = load_sentiment_model()
+    samples = {
+        "Happy review": "Very satisfied, quality feels premium. Good value for money. I would buy this again.",
+        "Mixed review": "Decent but could be better, support response was slow. No strong opinion.",
+        "Angry review": "Very disappointed, item stopped working quickly. I want a refund.",
+    }
+    st.caption("Try a sample, or write your own:")
+    s1, s2, s3 = st.columns(3)
+    for col, (label, sample) in zip((s1, s2, s3), samples.items()):
+        with col:
+            if st.button(label, use_container_width=True):
+                st.session_state["review_text"] = sample
+                st.rerun()
+
     text = st.text_area(
-        "Customer review",
-        height=150,
+        "Customer review text",
+        key="review_text",
+        height=170,
         placeholder="Example: packing was neat but the colour was different. would not buy again.",
     )
-    if st.button("Predict sentiment", type="primary"):
+    if st.button("Read this review", type="primary"):
         cleaned = (text or "").strip().lower()
         if len(cleaned) < 5:
-            st.warning("Please enter a longer review.")
+            st.warning("Please enter a longer review so the model has enough words to judge.")
         else:
             pred = nlp.predict([cleaned])[0]
-            probs = nlp.predict_proba([cleaned])[0]
+            proba_map = dict(zip(nlp.classes_, nlp.predict_proba([cleaned])[0]))
+            conf = float(proba_map[pred])
+            actions = {
+                "Positive": "Keep this customer close: ask for a public review or offer a related product.",
+                "Neutral": "Experience was average. Follow up on delivery or product fit before they go quiet.",
+                "Negative": "This buyer is unhappy. Route to support now — refund, replacement, or a call — before they churn.",
+            }
             css = {"Positive": "result-pos", "Neutral": "result-neu", "Negative": "result-neg"}[pred]
             st.markdown(
-                f'<div class="{css}"><h3>Predicted: {pred}</h3>'
-                f"<p>Use this to flag unhappy buyers without reading every review.</p></div>",
+                f'<div class="{css} sent-result"><h3>{pred}  ·  {conf:.0%} confidence</h3>'
+                f"<p>{actions[pred]}</p></div>",
                 unsafe_allow_html=True,
             )
-            st.bar_chart(pd.Series(probs, index=nlp.classes_, name="probability"), color="#006b3f")
+            c_neg, c_neu, c_pos = st.columns(3)
+            c_neg.metric("Negative", f"{proba_map.get('Negative', 0):.0%}")
+            c_neu.metric("Neutral", f"{proba_map.get('Neutral', 0):.0%}")
+            c_pos.metric("Positive", f"{proba_map.get('Positive', 0):.0%}")
 
 brand_footer()
