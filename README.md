@@ -2,7 +2,7 @@
 
 Junior Data Scientist final hackathon: inspect a raw SQLite e-commerce database, clean it, answer business questions in SQL, explore the data, predict churn, score review sentiment, and serve the results in Streamlit.
 
-**Live app:** *(add Streamlit Community Cloud URL after deploy)*  
+**Live app:** https://datasciencehackathon.streamlit.app/  
 **Repository:** https://github.com/msajidgithub/Data-Science-Hackathon
 
 ## How to run locally
@@ -44,4 +44,4 @@ Net revenue is `quantity × unit_price × (1 − discount)`.
 1. Confirm this repo is on GitHub (including `.db` and `models/*.joblib`).
 2. Go to [share.streamlit.io](https://share.streamlit.io), sign in with GitHub.
 3. New app → this repository → branch `master` → main file `app.py`.
-4. Deploy, then paste the public URL into this README.
+4. Live URL: https://datasciencehackathon.streamlit.app/
